@@ -14,10 +14,11 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render title', async () => {
+  // UPDATED: We no longer look for the <h1>, we look for the dashboard component
+  it('should render the dashboard component', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, WeatherApp');
+    expect(compiled.querySelector('app-activity-dashboard')).toBeTruthy();
   });
 });

@@ -1,0 +1,131 @@
+<div class="scifi-wrapper">
+  
+  <!-- WebGL 3D Globe & Realistic Solar System Canvas -->
+  <div #globeViz 
+       class="globe-container" 
+       [class.dimmed]="currentPhase() === 'dashboard'"
+       [style.transform]="parallaxGlobe">
+  </div>
+  
+  <!-- App State Controller -->
+  @switch (currentPhase()) {
+
+    <!-- PHASE 1: Diagnostics Preloader -->
+    @case ('preloading') {
+      <div class="terminal-overlay">
+        <p class="typewriter">[ SYSTEM ]: Establishing satellite uplink...</p>
+        <p class="typewriter delay-1">[ SYSTEM ]: Verifying telemetry sensors...</p>
+        <p class="typewriter delay-2">[ STATUS ]: UPLINK ONLINE. Awaiting target coordinates.</p>
+      </div>
+    }
+
+    <!-- PHASE 2: Initial Sci-Fi Search Bar -->
+    @case ('search') {
+      <div class="command-center">
+        <h1 class="glow-text">Enter your location</h1>
+        <div class="input-scanner">
+          <input #initialInput type="text" autofocus placeholder="TARGET LOCATION" (keyup.enter)="executeSearch(initialInput.value)" />
+        </div>
+      </div>
+    }
+
+    <!-- PHASE 3: Trajectory Calculation Animation -->
+    @case ('animating') {
+      <div class="animating-overlay">
+        <div class="target-reticle"></div>
+        <p class="tracking-text">CALCULATING TRAJECTORY FOR: {{ currentCity() | uppercase }}</p>
+      </div>
+    }
+
+    <!-- PHASE 4: The Bento Box Dashboard HUD -->
+    @case ('dashboard') {
+      <div class="dashboard-wrapper">
+        <div class="dashboard-content">
+          
+          <!-- Floating Header Search Island -->
+          <div class="search-island">
+            <input #cityInput type="text" [value]="currentCity()" placeholder="Where are you heading?" (keyup.enter)="executeSearch(cityInput.value)" />
+            <button (click)="executeSearch(cityInput.value)" [class.loading]="isSearching()">
+              {{ isSearching() ? 'Scanning...' : 'Search' }}
+            </button>
+          </div>
+
+          @if (currentWeather(); as current) {
+            <div class="bento-grid">
+              
+              <!-- Hero Weather Block -->
+              <div class="bento-card hero-card">
+                <h2 class="city-name">{{ currentCity() }}</h2>
+                <div class="huge-temp">{{ current.temperature_2m | number:'1.0-0' }}°</div>
+                <p class="feels-like">Feels like {{ current.apparent_temperature | number:'1.0-0' }}°</p>
+              </div>
+
+              <!-- Telemetry Metrics Block -->
+              <div class="bento-card metrics-card">
+                <div class="metric-row">
+                  <span class="icon">💧</span>
+                  <div class="data">
+                    <span class="label">Humidity</span>
+                    <span class="value">{{ current.relative_humidity_2m }}%</span>
+                  </div>
+                </div>
+                <div class="metric-row">
+                  <span class="icon">💨</span>
+                  <div class="data">
+                    <span class="label">Wind</span>
+                    <span class="value">{{ current.wind_speed_10m }} km/h</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Smart Activity Advisor Block -->
+              <div class="bento-card advisor-card">
+                <div class="card-header">
+                  <h3>Running Advisor</h3>
+                  <span class="subtitle">Tap a safe window to launch maps</span>
+                </div>
+                <div class="horizontal-scroll">
+                  @for (timeSlot of optimalWindows(); track timeSlot.timeBlock) {
+                    <button class="window-pill" 
+                            [class.optimal]="timeSlot.status === 'Optimal'" 
+                            [class.poor]="timeSlot.status === 'Poor'"
+                            (click)="launchRoute()">
+                      <span class="time">{{ timeSlot.timeBlock | date:'h a' }}</span>
+                      <span class="temp">{{ timeSlot.temperature }}°</span>
+                      <span class="status-icon">{{ timeSlot.status === 'Poor' ? '⚠️' : '✅' }}</span>
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <!-- 7-Day Forecast Block -->
+              @if (dailyForecast(); as daily) {
+                <div class="bento-card forecast-card">
+                  <h3>7-Day Outlook</h3>
+                  <div class="forecast-list">
+                    @for (time of daily.time; track time; let i = $index) {
+                      @if (i >= 3) {
+                        <div class="daily-row">
+                          <span class="day">{{ time | date:'EEE' }}</span>
+                          <div class="range-wrapper">
+                            <span class="low">{{ daily.temperature_2m_min[i] | number:'1.0-0' }}°</span>
+                            <div class="range-track">
+                              <div class="range-fill"></div>
+                            </div>
+                            <span class="high">{{ daily.temperature_2m_max[i] | number:'1.0-0' }}°</span>
+                          </div>
+                        </div>
+                      }
+                    }
+                  </div>
+                </div>
+              }
+
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+  }
+</div>
