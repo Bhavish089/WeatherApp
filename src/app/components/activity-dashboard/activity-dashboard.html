@@ -5,6 +5,13 @@
        class="globe-container" 
        [class.dimmed]="currentPhase() === 'dashboard'"
        [style.transform]="parallaxGlobe">
+    <div class="fallback-globe" aria-hidden="true">
+      <div class="globe-latitudes"></div>
+      <div class="globe-longitudes"></div>
+      <div class="globe-highlight"></div>
+      <div class="globe-orbit"></div>
+      <div class="globe-signal"></div>
+    </div>
   </div>
   
   <!-- App State Controller -->

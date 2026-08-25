@@ -68,7 +68,7 @@ export class ActivityDashboard implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    if (isPlatformBrowser(this.platformId)) {
+    if (isPlatformBrowser(this.platformId) && this.canUseWebGl()) {
       // @ts-ignore
       import('globe.gl').then((module) => {
         const Globe = module.default as any;
@@ -93,6 +93,10 @@ export class ActivityDashboard implements OnInit, AfterViewInit {
         this.buildCinematicCosmos();
       });
     }
+  }
+
+  private canUseWebGl(): boolean {
+    return typeof WebGLRenderingContext !== 'undefined';
   }
 
   private buildCinematicCosmos(): void {
