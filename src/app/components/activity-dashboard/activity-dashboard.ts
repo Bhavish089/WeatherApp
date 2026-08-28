@@ -45,25 +45,28 @@ export class ActivityDashboard {
   private globeInstance: any;
   private currentZoomLevel = 0; 
 
-  private readonly globalMarkers = [
-    { city: 'New York, USA', lat: 40.7128, lng: -74.0060, temp: '22°', icon: '☀️', condition: 'SUNNY' },
-    { city: 'Los Angeles, USA', lat: 34.0522, lng: -118.2437, temp: '26°', icon: '☀️', condition: 'SUNNY' },
-    { city: 'Mexico City, MX', lat: 19.4326, lng: -99.1332, temp: '20°', icon: '⛅', condition: 'CLOUDY' },
-    { city: 'Toronto, CAN', lat: 43.6532, lng: -79.3832, temp: '18°', icon: '🌧️', condition: 'RAIN' },
-    { city: 'São Paulo, BRA', lat: -23.5505, lng: -46.6333, temp: '25°', icon: '⛈️', condition: 'STORM' },
-    { city: 'Bogotá, COL', lat: 4.7110, lng: -74.0721, temp: '14°', icon: '🌧️', condition: 'RAIN' },
-    { city: 'London, UK', lat: 51.5074, lng: -0.1278, temp: '15°', icon: '🌧️', condition: 'RAIN' },
-    { city: 'Paris, FRA', lat: 48.8566, lng: 2.3522, temp: '17°', icon: '⛅', condition: 'CLOUDY' },
-    { city: 'Berlin, DEU', lat: 52.5200, lng: 13.4050, temp: '16°', icon: '⛅', condition: 'CLOUDY' },
-    { city: 'Rome, ITA', lat: 41.9028, lng: 12.4964, temp: '24°', icon: '☀️', condition: 'SUNNY' },
-    { city: 'Cape Town, ZAF', lat: -33.9249, lng: 18.4241, temp: '18°', icon: '☀️', condition: 'SUNNY' },
-    { city: 'Cairo, EGY', lat: 30.0444, lng: 31.2357, temp: '33°', icon: '☀️', condition: 'SUNNY' },
-    { city: 'Greater Noida, IND', lat: 28.4744, lng: 77.5040, temp: '31°', icon: '☀️', condition: 'SUNNY' }, 
-    { city: 'Mumbai, IND', lat: 19.0760, lng: 72.8777, temp: '29°', icon: '⛈️', condition: 'STORM' },
-    { city: 'Tokyo, JPN', lat: 35.6762, lng: 139.6503, temp: '28°', icon: '🌤️', condition: 'SUNNY' },
-    { city: 'Dubai, UAE', lat: 25.2048, lng: 55.2708, temp: '38°', icon: '☀️', condition: 'SUNNY' },
-    { city: 'Sydney, AUS', lat: -33.8688, lng: 151.2093, temp: '18°', icon: '⛅', condition: 'CLOUDY' }
+  // Stripped of hardcoded temperatures - just pure coordinate targets
+  private readonly baseMarkers = [
+    { city: 'New York, USA', lat: 40.7128, lng: -74.0060 },
+    { city: 'Los Angeles, USA', lat: 34.0522, lng: -118.2437 },
+    { city: 'Mexico City, MX', lat: 19.4326, lng: -99.1332 },
+    { city: 'Toronto, CAN', lat: 43.6532, lng: -79.3832 },
+    { city: 'São Paulo, BRA', lat: -23.5505, lng: -46.6333 },
+    { city: 'Bogotá, COL', lat: 4.7110, lng: -74.0721 },
+    { city: 'London, UK', lat: 51.5074, lng: -0.1278 },
+    { city: 'Paris, FRA', lat: 48.8566, lng: 2.3522 },
+    { city: 'Berlin, DEU', lat: 52.5200, lng: 13.4050 },
+    { city: 'Rome, ITA', lat: 41.9028, lng: 12.4964 },
+    { city: 'Cape Town, ZAF', lat: -33.9249, lng: 18.4241 },
+    { city: 'Cairo, EGY', lat: 30.0444, lng: 31.2357 },
+    { city: 'Greater Noida, IND', lat: 28.4744, lng: 77.5040 }, 
+    { city: 'Mumbai, IND', lat: 19.0760, lng: 72.8777 },
+    { city: 'Tokyo, JPN', lat: 35.6762, lng: 139.6503 },
+    { city: 'Dubai, UAE', lat: 25.2048, lng: 55.2708 },
+    { city: 'Sydney, AUS', lat: -33.8688, lng: 151.2093 }
   ];
+
+  private liveMarkers: any[] = []; // Holds the dynamically generated weather nodes
 
   constructor() {
     afterNextRender(() => {
@@ -111,9 +114,21 @@ export class ActivityDashboard {
     return `translate3d(${this.mouseX() * -15}px, ${this.mouseY() * -15}px, 0) scale(1.05)`;
   }
 
+  // Translates strict WMO Data Codes into the Dashboard UI States
+  private parseWmoCode(code: number): { icon: string, condition: string } {
+    if (code <= 1) return { icon: '☀️', condition: 'SUNNY' };
+    if (code <= 3) return { icon: '⛅', condition: 'CLOUDY' };
+    if (code >= 45 && code <= 48) return { icon: '🌫️', condition: 'CLOUDY' };
+    if (code >= 51 && code <= 67) return { icon: '🌧️', condition: 'RAIN' };
+    if (code >= 71 && code <= 77) return { icon: '❄️', condition: 'RAIN' }; 
+    if (code >= 80 && code <= 82) return { icon: '🌧️', condition: 'RAIN' };
+    if (code >= 95) return { icon: '⛈️', condition: 'STORM' };
+    return { icon: '☀️', condition: 'SUNNY' };
+  }
+
   private getFilteredMarkers() {
-    if (this.activeFilter() === 'ALL') return this.globalMarkers;
-    return this.globalMarkers.filter(m => m.condition === this.activeFilter());
+    if (this.activeFilter() === 'ALL') return this.liveMarkers;
+    return this.liveMarkers.filter(m => m.condition === this.activeFilter());
   }
 
   applyFilter(filter: string) {
@@ -153,7 +168,6 @@ export class ActivityDashboard {
       this.globeInstance = Globe()(this.globeVizEl.nativeElement)
         .width(width)
         .height(height)
-        // CORS FIX: Bypassing unpkg redirect using JSDelivr CDN
         .globeImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg')
         .bumpImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png')
         .backgroundImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/night-sky.png')
@@ -188,14 +202,30 @@ export class ActivityDashboard {
           return el;
         });
 
-      // --- VOLUMETRIC DRIFTING CLOUDS ---
+      // Fetch Real-Time Global Telemetry on Boot
+      this.weatherService.getLiveGlobalWeather(this.baseMarkers).subscribe((responses: any[]) => {
+        this.liveMarkers = this.baseMarkers.map((m, i) => {
+          const current = responses[i].current;
+          const parsed = this.parseWmoCode(current.weather_code);
+          return {
+            ...m,
+            temp: Math.round(current.temperature_2m) + '°',
+            icon: parsed.icon,
+            condition: parsed.condition
+          };
+        });
+
+        // Instantly inject the live data if the user has already zoomed in
+        if (this.currentZoomLevel > 0) {
+          this.globeInstance.htmlElementsData(this.getFilteredMarkers());
+        }
+      });
+
       const cloudGeometry = new THREE.SphereGeometry(this.globeInstance.getGlobeRadius() * 1.015, 75, 75);
-      
       const textureLoader = new THREE.TextureLoader();
       textureLoader.setCrossOrigin('anonymous'); 
 
       const cloudMaterial = new THREE.MeshPhongMaterial({
-        // CORS FIX: Bypassing unpkg redirect using JSDelivr CDN
         map: textureLoader.load('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-clouds10k.png'),
         transparent: true,
         opacity: 0.65,
@@ -270,7 +300,8 @@ export class ActivityDashboard {
           sunset: sunsetIso ? new Date(sunsetIso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '06:55 PM'
         });
 
-        const { lat, lng } = data.location;
+        const { lat, lng, name } = data.location;
+        this.currentCity.set(name); // Updates the UI with the exact localized name
         
         setTimeout(() => {
           if (this.globeInstance) {
