@@ -16,6 +16,15 @@
     }
 
     @case ('search') {
+      <!-- Global Telemetry Filter Bar -->
+      <div class="global-filters">
+        <button [class.active]="activeFilter() === 'ALL'" (click)="applyFilter('ALL')">ALL</button>
+        <button [class.active]="activeFilter() === 'SUNNY'" (click)="applyFilter('SUNNY')">☀️ SUN</button>
+        <button [class.active]="activeFilter() === 'CLOUDY'" (click)="applyFilter('CLOUDY')">☁️ CLOUD</button>
+        <button [class.active]="activeFilter() === 'RAIN'" (click)="applyFilter('RAIN')">🌧️ RAIN</button>
+        <button [class.active]="activeFilter() === 'STORM'" (click)="applyFilter('STORM')">⛈️ STORM</button>
+      </div>
+
       <div class="command-center">
         <h1 class="glow-text">Enter your location</h1>
         <div class="input-scanner">

@@ -29,6 +29,7 @@ export class ActivityDashboard {
   readonly currentCity = signal<string>('');
   readonly isSearching = signal(false);
   readonly errorMessage = signal<string>(''); 
+  readonly activeFilter = signal<string>('ALL'); // NEW: Telemetry Filter State
 
   readonly optimalWindows = signal<ActivityWindow[]>([]);
   readonly currentWeather = signal<RouteWeatherResponse['weather']['current'] | any>(null);
@@ -44,25 +45,25 @@ export class ActivityDashboard {
   private globeInstance: any;
   private currentZoomLevel = 0; 
 
-  // Expanded Nodes with Country Data
+  // Categorized Global Nodes for Live Filtering
   private readonly globalMarkers = [
-    { city: 'New York, USA', lat: 40.7128, lng: -74.0060, temp: '22°', icon: '☀️' },
-    { city: 'Los Angeles, USA', lat: 34.0522, lng: -118.2437, temp: '26°', icon: '☀️' },
-    { city: 'Mexico City, MX', lat: 19.4326, lng: -99.1332, temp: '20°', icon: '⛅' },
-    { city: 'Toronto, CAN', lat: 43.6532, lng: -79.3832, temp: '18°', icon: '🌧️' },
-    { city: 'São Paulo, BRA', lat: -23.5505, lng: -46.6333, temp: '25°', icon: '⛈️' },
-    { city: 'Bogotá, COL', lat: 4.7110, lng: -74.0721, temp: '14°', icon: '🌧️' },
-    { city: 'London, UK', lat: 51.5074, lng: -0.1278, temp: '15°', icon: '🌧️' },
-    { city: 'Paris, FRA', lat: 48.8566, lng: 2.3522, temp: '17°', icon: '⛅' },
-    { city: 'Berlin, DEU', lat: 52.5200, lng: 13.4050, temp: '16°', icon: '⛅' },
-    { city: 'Rome, ITA', lat: 41.9028, lng: 12.4964, temp: '24°', icon: '☀️' },
-    { city: 'Cape Town, ZAF', lat: -33.9249, lng: 18.4241, temp: '18°', icon: '☀️' },
-    { city: 'Cairo, EGY', lat: 30.0444, lng: 31.2357, temp: '33°', icon: '☀️' },
-    { city: 'Greater Noida, IND', lat: 28.4744, lng: 77.5040, temp: '31°', icon: '☀️' }, 
-    { city: 'Mumbai, IND', lat: 19.0760, lng: 72.8777, temp: '29°', icon: '⛈️' },
-    { city: 'Tokyo, JPN', lat: 35.6762, lng: 139.6503, temp: '28°', icon: '🌤️' },
-    { city: 'Dubai, UAE', lat: 25.2048, lng: 55.2708, temp: '38°', icon: '☀️' },
-    { city: 'Sydney, AUS', lat: -33.8688, lng: 151.2093, temp: '18°', icon: '⛅' }
+    { city: 'New York, USA', lat: 40.7128, lng: -74.0060, temp: '22°', icon: '☀️', condition: 'SUNNY' },
+    { city: 'Los Angeles, USA', lat: 34.0522, lng: -118.2437, temp: '26°', icon: '☀️', condition: 'SUNNY' },
+    { city: 'Mexico City, MX', lat: 19.4326, lng: -99.1332, temp: '20°', icon: '⛅', condition: 'CLOUDY' },
+    { city: 'Toronto, CAN', lat: 43.6532, lng: -79.3832, temp: '18°', icon: '🌧️', condition: 'RAIN' },
+    { city: 'São Paulo, BRA', lat: -23.5505, lng: -46.6333, temp: '25°', icon: '⛈️', condition: 'STORM' },
+    { city: 'Bogotá, COL', lat: 4.7110, lng: -74.0721, temp: '14°', icon: '🌧️', condition: 'RAIN' },
+    { city: 'London, UK', lat: 51.5074, lng: -0.1278, temp: '15°', icon: '🌧️', condition: 'RAIN' },
+    { city: 'Paris, FRA', lat: 48.8566, lng: 2.3522, temp: '17°', icon: '⛅', condition: 'CLOUDY' },
+    { city: 'Berlin, DEU', lat: 52.5200, lng: 13.4050, temp: '16°', icon: '⛅', condition: 'CLOUDY' },
+    { city: 'Rome, ITA', lat: 41.9028, lng: 12.4964, temp: '24°', icon: '☀️', condition: 'SUNNY' },
+    { city: 'Cape Town, ZAF', lat: -33.9249, lng: 18.4241, temp: '18°', icon: '☀️', condition: 'SUNNY' },
+    { city: 'Cairo, EGY', lat: 30.0444, lng: 31.2357, temp: '33°', icon: '☀️', condition: 'SUNNY' },
+    { city: 'Greater Noida, IND', lat: 28.4744, lng: 77.5040, temp: '31°', icon: '☀️', condition: 'SUNNY' }, 
+    { city: 'Mumbai, IND', lat: 19.0760, lng: 72.8777, temp: '29°', icon: '⛈️', condition: 'STORM' },
+    { city: 'Tokyo, JPN', lat: 35.6762, lng: 139.6503, temp: '28°', icon: '🌤️', condition: 'SUNNY' },
+    { city: 'Dubai, UAE', lat: 25.2048, lng: 55.2708, temp: '38°', icon: '☀️', condition: 'SUNNY' },
+    { city: 'Sydney, AUS', lat: -33.8688, lng: 151.2093, temp: '18°', icon: '⛅', condition: 'CLOUDY' }
   ];
 
   constructor() {
@@ -111,6 +112,19 @@ export class ActivityDashboard {
     return `translate3d(${this.mouseX() * -15}px, ${this.mouseY() * -15}px, 0) scale(1.05)`;
   }
 
+  // Live Filtering Logic
+  private getFilteredMarkers() {
+    if (this.activeFilter() === 'ALL') return this.globalMarkers;
+    return this.globalMarkers.filter(m => m.condition === this.activeFilter());
+  }
+
+  applyFilter(filter: string) {
+    this.activeFilter.set(filter);
+    if (this.globeInstance && this.currentZoomLevel > 0) {
+      this.globeInstance.htmlElementsData(this.getFilteredMarkers());
+    }
+  }
+
   private generateWindCurrents() {
     const arcs = [];
     for (let i = 0; i < 100; i++) {
@@ -141,9 +155,9 @@ export class ActivityDashboard {
       this.globeInstance = Globe()(this.globeVizEl.nativeElement)
         .width(width)
         .height(height)
-        .globeImageUrl('//unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
-        .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
-        .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
+        .globeImageUrl('https://unpkg.com/three-globe@2.46.2/example/img/earth-blue-marble.jpg')
+        .bumpImageUrl('https://unpkg.com/three-globe@2.46.2/example/img/earth-topology.png')
+        .backgroundImageUrl('https://unpkg.com/three-globe@2.46.2/example/img/night-sky.png')
         .backgroundColor('rgba(0,0,0,0)')
         .showAtmosphere(true)
         .atmosphereColor('#00E5FF')
@@ -171,21 +185,25 @@ export class ActivityDashboard {
             el.innerHTML = `${d.icon} <span>${d.temp}</span>`;
           }
           
-          // LOCKED MAX ZOOM: 1.5 keeps the Earth texture incredibly crisp
           el.onclick = () => this.globeInstance.pointOfView({ lat: d.lat, lng: d.lng, altitude: 1.5 }, 1500);
           return el;
         });
 
       // --- VOLUMETRIC DRIFTING CLOUDS ---
       const cloudGeometry = new THREE.SphereGeometry(this.globeInstance.getGlobeRadius() * 1.015, 75, 75);
+      
+      const textureLoader = new THREE.TextureLoader();
+      textureLoader.setCrossOrigin('anonymous'); 
+
       const cloudMaterial = new THREE.MeshPhongMaterial({
-        map: new THREE.TextureLoader().load('//unpkg.com/three-globe/example/img/earth-clouds10k.png'),
+        map: textureLoader.load('https://unpkg.com/three-globe@2.46.2/example/img/earth-clouds10k.png'),
         transparent: true,
         opacity: 0.65,
         blending: THREE.AdditiveBlending,
         side: THREE.DoubleSide,
         depthWrite: false,
       });
+      
       const cloudSphere = new THREE.Mesh(cloudGeometry, cloudMaterial);
       this.globeInstance.scene().add(cloudSphere);
 
@@ -200,13 +218,13 @@ export class ActivityDashboard {
 
       this.globeInstance.onZoom((pov: { lat: number, lng: number, altitude: number }) => {
         let newLevel = 0;
-        if (pov.altitude < 2.0) newLevel = 2; // City level triggers sooner
+        if (pov.altitude < 2.0) newLevel = 2; 
         else if (pov.altitude < 4.0) newLevel = 1; 
         else newLevel = 0; 
 
         if (this.currentZoomLevel !== newLevel) {
           this.currentZoomLevel = newLevel;
-          this.globeInstance.htmlElementsData(newLevel === 0 ? [] : this.globalMarkers);
+          this.globeInstance.htmlElementsData(newLevel === 0 ? [] : this.getFilteredMarkers());
         }
       });
 
@@ -257,7 +275,6 @@ export class ActivityDashboard {
         setTimeout(() => {
           if (this.globeInstance) {
             this.globeInstance.controls().autoRotateSpeed = 0.1; 
-            // Locked Target Zoom at 1.5 to maintain crisp country boundaries
             this.globeInstance.pointOfView({ lat, lng, altitude: 1.5 }, 2000); 
           }
           setTimeout(() => {
