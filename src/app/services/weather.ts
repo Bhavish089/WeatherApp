@@ -7,13 +7,17 @@ interface GeocodingResponse {
 }
 
 export interface RouteWeatherResponse {
-  location: { lat: number; lng: number }; // NEW: Capture target coordinates
+  location: { lat: number; lng: number; name: string }; 
   weather: {
     current: {
       temperature_2m: number;
       apparent_temperature: number;
       relative_humidity_2m: number;
       wind_speed_10m: number;
+      wind_direction_10m?: number;
+      wind_gusts_10m?: number;
+      surface_pressure?: number;
+      visibility?: number;
     };
     hourly: {
       time: string[];
@@ -26,6 +30,9 @@ export interface RouteWeatherResponse {
       temperature_2m_max: number[];
       temperature_2m_min: number[];
       weather_code: number[];
+      sunrise?: string[];
+      sunset?: string[];
+      uv_index_max?: number[];
     };
   };
 }
@@ -60,16 +67,15 @@ export class WeatherService {
             params: {
               latitude: result.latitude,
               longitude: result.longitude,
-              current: 'temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m',
+              current: 'temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,visibility',
               hourly: 'temperature_2m,precipitation_probability,windspeed_10m',
-              daily: 'temperature_2m_max,temperature_2m_min,weather_code',
-              past_days: 3, 
+              daily: 'temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset,uv_index_max',
+              forecast_days: 15, 
               timezone: 'auto',
             },
           }).pipe(map((forecast) => ({ 
             weather: forecast,
-            // Include the coordinates in the final observable emission
-            location: { lat: result.latitude, lng: result.longitude }
+            location: { lat: result.latitude, lng: result.longitude, name: result.name }
           })));
         }),
       );

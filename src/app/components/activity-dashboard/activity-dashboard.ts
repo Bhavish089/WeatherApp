@@ -1,7 +1,7 @@
-import { DatePipe, DecimalPipe, UpperCasePipe, isPlatformBrowser } from '@angular/common';
+import { DatePipe, DecimalPipe, UpperCasePipe } from '@angular/common';
 import {
-  AfterViewInit, ChangeDetectionStrategy, Component, ElementRef,
-  HostListener, OnInit, PLATFORM_ID, ViewChild, inject, signal,
+  ChangeDetectionStrategy, Component, ElementRef,
+  HostListener, ViewChild, inject, signal, afterNextRender
 } from '@angular/core';
 import { ActivityAdvisorService, ActivityWindow } from '../../services/activity-advisor';
 import { NavigationService } from '../../services/navigation';
@@ -16,30 +16,47 @@ type AppPhase = 'preloading' | 'search' | 'animating' | 'dashboard';
   styleUrl: './activity-dashboard.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ActivityDashboard implements OnInit, AfterViewInit {
+export class ActivityDashboard {
   private readonly weatherService = inject(WeatherService);
   private readonly advisorService = inject(ActivityAdvisorService);
   private readonly navService = inject(NavigationService);
-  private readonly platformId = inject(PLATFORM_ID);
 
   @ViewChild('globeViz', { static: false }) globeVizEl!: ElementRef;
 
   readonly currentPhase = signal<AppPhase>('preloading');
   readonly currentCity = signal<string>('');
   readonly isSearching = signal(false);
+  readonly errorMessage = signal<string>(''); 
 
   readonly optimalWindows = signal<ActivityWindow[]>([]);
-  readonly currentWeather = signal<RouteWeatherResponse['weather']['current'] | null>(null);
+  readonly currentWeather = signal<RouteWeatherResponse['weather']['current'] | any>(null);
   readonly dailyForecast = signal<RouteWeatherResponse['weather']['daily'] | null>(null);
+  
+  readonly atmosphericData = signal<{ visibility: string, pressure: string, uv: number } | null>(null);
+  readonly ephemerisData = signal<{ sunrise: string, sunset: string } | null>(null);
 
   readonly mouseX = signal<number>(0);
   readonly mouseY = signal<number>(0);
+  readonly deviceHeading = signal<number>(0);
 
   private globeInstance: any;
 
+  constructor() {
+    afterNextRender(() => {
+      setTimeout(() => {
+        if (navigator.onLine) {
+          this.currentPhase.set('search');
+        } else {
+          this.currentPhase.set('search');
+        }
+      }, 2200);
+      this.initGlobe();
+    });
+  }
+
   @HostListener('document:mousemove', ['$event'])
   onMouseMove(event: MouseEvent) {
-    if (isPlatformBrowser(this.platformId)) {
+    if (typeof window !== 'undefined') {
       this.mouseX.set((event.clientX / window.innerWidth) * 2 - 1);
       this.mouseY.set((event.clientY / window.innerHeight) * 2 - 1);
     }
@@ -47,7 +64,7 @@ export class ActivityDashboard implements OnInit, AfterViewInit {
 
   @HostListener('window:resize')
   onWindowResize() {
-    if (this.globeInstance && this.globeVizEl) {
+    if (typeof window !== 'undefined' && this.globeInstance && this.globeVizEl) {
       const width = this.globeVizEl.nativeElement.clientWidth;
       const height = this.globeVizEl.nativeElement.clientHeight;
       this.globeInstance.width(width);
@@ -55,160 +72,91 @@ export class ActivityDashboard implements OnInit, AfterViewInit {
     }
   }
 
+  @HostListener('window:deviceorientationabsolute', ['$event'])
+  @HostListener('window:deviceorientation', ['$event'])
+  onDeviceOrientation(event: any) {
+    if (typeof window !== 'undefined') {
+      let heading = 0;
+      
+      if (event.webkitCompassHeading) {
+        heading = event.webkitCompassHeading;
+      } 
+      else if (event.absolute && event.alpha !== null) {
+        heading = 360 - event.alpha;
+      }
+      
+      if (Math.abs(this.deviceHeading() - heading) > 2) {
+        this.deviceHeading.set(heading);
+      }
+    }
+  }
+
   get parallaxGlobe(): string {
     return `translate3d(${this.mouseX() * -15}px, ${this.mouseY() * -15}px, 0) scale(1.05)`;
   }
 
-  ngOnInit(): void {
-    setTimeout(() => {
-      if (navigator.onLine) {
-        this.currentPhase.set('search');
-      }
-    }, 2200);
-  }
-
-  ngAfterViewInit(): void {
-    if (isPlatformBrowser(this.platformId) && this.canUseWebGl()) {
-      // @ts-ignore
-      import('globe.gl').then((module) => {
-        const Globe = module.default as any;
-        
-        const width = this.globeVizEl.nativeElement.clientWidth;
-        const height = this.globeVizEl.nativeElement.clientHeight;
-
-        this.globeInstance = Globe()(this.globeVizEl.nativeElement)
-          .width(width)
-          .height(height)
-          .globeImageUrl('//unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
-          .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
-          .backgroundColor('rgba(0,0,0,0)')
-          .showAtmosphere(true)
-          .atmosphereColor('#00E5FF')
-          .atmosphereAltitude(0.18);
-
-        this.globeInstance.controls().autoRotate = true;
-        this.globeInstance.controls().autoRotateSpeed = 0.4;
-        this.globeInstance.controls().enableZoom = false;
-
-        this.buildCinematicCosmos();
-      });
-    }
-  }
-
-  private canUseWebGl(): boolean {
-    return typeof WebGLRenderingContext !== 'undefined';
-  }
-
-  private buildCinematicCosmos(): void {
-    const scene = this.globeInstance.scene();
+  private initGlobe(): void {
     // @ts-ignore
-    import('three').then((THREE) => {
-      // Procedural generator for Sun and Moon
-      const createTexture = (type: 'sun' | 'moon') => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 1024;
-        canvas.height = 1024;
-        const ctx = canvas.getContext('2d')!;
+    import('globe.gl').then((module) => {
+      const Globe = module.default as any;
+      if (!this.globeVizEl || !this.globeVizEl.nativeElement) return;
 
-        if (type === 'sun') {
-          // Deep fiery solar gradient
-          const gradient = ctx.createRadialGradient(512, 512, 50, 512, 512, 512);
-          gradient.addColorStop(0, '#ffffff');
-          gradient.addColorStop(0.15, '#fff7ae');
-          gradient.addColorStop(0.45, '#ff8c00');
-          gradient.addColorStop(0.8, '#e62e00');
-          gradient.addColorStop(1, '#8b0000');
-          ctx.fillStyle = gradient;
-          ctx.fillRect(0, 0, 1024, 1024);
+      const width = this.globeVizEl.nativeElement.clientWidth || window.innerWidth;
+      const height = this.globeVizEl.nativeElement.clientHeight || window.innerHeight;
 
-          // Intense solar flares and plasma granules
-          for (let i = 0; i < 800; i++) {
-            ctx.fillStyle = Math.random() > 0.3 ? 'rgba(255,255,255,0.25)' : 'rgba(255,69,0,0.3)';
-            ctx.beginPath();
-            ctx.arc(Math.random() * 1024, Math.random() * 1024, Math.random() * 30, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        } else {
-          // Lunar crater surface texture
-          ctx.fillStyle = '#999999';
-          ctx.fillRect(0, 0, 1024, 1024);
-          for (let i = 0; i < 500; i++) {
-            ctx.fillStyle = Math.random() > 0.5 ? 'rgba(50,50,50,0.4)' : 'rgba(220,220,220,0.25)';
-            ctx.beginPath();
-            ctx.arc(Math.random() * 1024, Math.random() * 1024, Math.random() * 25, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
-        return new THREE.CanvasTexture(canvas);
-      };
+      this.globeInstance = Globe()(this.globeVizEl.nativeElement)
+        .width(width)
+        .height(height)
+        .globeImageUrl('//unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+        .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
+        .backgroundColor('rgba(0,0,0,0)')
+        .showAtmosphere(true)
+        .atmosphereColor('#00E5FF')
+        .atmosphereAltitude(0.18);
 
-      // 1. MASSIVE DEEP-SPACE SUN (Pushed far away, increased size to 110)
-      const sunGeo = new THREE.SphereGeometry(110, 32, 32);
-      const sunMat = new THREE.MeshBasicMaterial({ map: createTexture('sun') });
-      const sunMesh = new THREE.Mesh(sunGeo, sunMat);
-      sunMesh.position.set(700, 350, -900); // Placed deep into the background horizon
-      scene.add(sunMesh);
-
-      // Add a secondary outer corona glow layer for that blinding star effect
-      const coronaGeo = new THREE.SphereGeometry(125, 32, 32);
-      const coronaMat = new THREE.MeshBasicMaterial({
-        color: 0xffaa00,
-        transparent: true,
-        opacity: 0.2,
-        blending: THREE.AdditiveBlending
-      });
-      const coronaMesh = new THREE.Mesh(coronaGeo, coronaMat);
-      sunMesh.add(coronaMesh);
-
-      // High-intensity directional light casting from the distant Sun across the scene
-      const sunLight = new THREE.DirectionalLight(0xfff8ee, 2.8);
-      sunLight.position.copy(sunMesh.position);
-      scene.add(sunLight);
-
-      // 2. Textured Moon Mesh
-      const moonGeo = new THREE.SphereGeometry(12, 32, 32);
-      const moonMat = new THREE.MeshStandardMaterial({
-        map: createTexture('moon'),
-        roughness: 0.9,
-        metalness: 0.1
-      });
-      const moonMesh = new THREE.Mesh(moonGeo, moonMat);
-      moonMesh.position.set(-280, -150, -250);
-      scene.add(moonMesh);
-
-      // Deep space ambient light
-      const ambientLight = new THREE.AmbientLight(0x1a1a33, 0.4);
-      scene.add(ambientLight);
-
-      // Cinematic rotation loop
-      const animateCosmos = () => {
-        requestAnimationFrame(animateCosmos);
-        sunMesh.rotation.y += 0.0008;
-        moonMesh.rotation.y += 0.0012;
-      };
-      animateCosmos();
-    });
+      this.globeInstance.controls().autoRotate = true;
+      this.globeInstance.controls().autoRotateSpeed = 0.4;
+      this.globeInstance.controls().enableZoom = false;
+    }).catch(err => console.error('Globe initialization failed:', err));
   }
 
   executeSearch(cityName: string): void {
     const destination = cityName.trim();
     if (!destination) return;
 
+    this.errorMessage.set('');
     this.currentCity.set(destination);
     this.isSearching.set(true);
     this.currentPhase.set('animating');
 
     if (this.globeInstance) {
-      const currentPov = this.globeInstance.pointOfView();
-      this.globeInstance.pointOfView({ ...currentPov, altitude: 2.5 }, 1000);
-      this.globeInstance.controls().autoRotateSpeed = 15;
+      try {
+        const currentPov = this.globeInstance.pointOfView();
+        this.globeInstance.pointOfView({ ...currentPov, altitude: 2.5 }, 1000);
+        this.globeInstance.controls().autoRotateSpeed = 15;
+      } catch (e) {
+        console.warn('Globe POV transition skipped', e);
+      }
     }
 
     this.weatherService.getRouteWeather(destination).subscribe({
-      next: (data) => {
+      next: (data: any) => {
         this.currentWeather.set(data.weather.current);
         this.dailyForecast.set(data.weather.daily);
         this.optimalWindows.set(this.advisorService.evaluateWindows(data.weather.hourly, 'running'));
+
+        this.atmosphericData.set({
+          visibility: data.weather.current?.visibility ? (data.weather.current.visibility / 1000).toFixed(1) : '10.0',
+          pressure: data.weather.current?.surface_pressure?.toString() || '1013',
+          uv: data.weather.daily?.uv_index_max?.[0] || 0
+        });
+
+        const sunriseIso = data.weather.daily?.sunrise?.[0];
+        const sunsetIso = data.weather.daily?.sunset?.[0];
+        this.ephemerisData.set({
+          sunrise: sunriseIso ? new Date(sunriseIso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '05:42 AM',
+          sunset: sunsetIso ? new Date(sunsetIso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '06:55 PM'
+        });
 
         const { lat, lng } = data.location;
         
@@ -217,16 +165,17 @@ export class ActivityDashboard implements OnInit, AfterViewInit {
             this.globeInstance.controls().autoRotateSpeed = 0.1; 
             this.globeInstance.pointOfView({ lat, lng, altitude: 0.7 }, 2000); 
           }
-
           setTimeout(() => {
             this.isSearching.set(false);
             this.currentPhase.set('dashboard');
           }, 2000);
         }, 1000);
       },
-      error: () => {
+      error: (err: any) => {
+        console.error('Weather search failed:', err);
         this.isSearching.set(false);
         this.currentPhase.set('search');
+        this.errorMessage.set(`[ ERROR ]: TARGET '${destination.toUpperCase()}' NOT FOUND. PLEASE RECALIBRATE.`);
       },
     });
   }

@@ -1,23 +1,12 @@
 <div class="scifi-wrapper">
   
-  <!-- WebGL 3D Globe & Realistic Solar System Canvas -->
   <div #globeViz 
        class="globe-container" 
        [class.dimmed]="currentPhase() === 'dashboard'"
        [style.transform]="parallaxGlobe">
-    <div class="fallback-globe" aria-hidden="true">
-      <div class="globe-latitudes"></div>
-      <div class="globe-longitudes"></div>
-      <div class="globe-highlight"></div>
-      <div class="globe-orbit"></div>
-      <div class="globe-signal"></div>
-    </div>
   </div>
   
-  <!-- App State Controller -->
   @switch (currentPhase()) {
-
-    <!-- PHASE 1: Diagnostics Preloader -->
     @case ('preloading') {
       <div class="terminal-overlay">
         <p class="typewriter">[ SYSTEM ]: Establishing satellite uplink...</p>
@@ -26,17 +15,26 @@
       </div>
     }
 
-    <!-- PHASE 2: Initial Sci-Fi Search Bar -->
     @case ('search') {
       <div class="command-center">
         <h1 class="glow-text">Enter your location</h1>
         <div class="input-scanner">
-          <input #initialInput type="text" autofocus placeholder="TARGET LOCATION" (keyup.enter)="executeSearch(initialInput.value)" />
+          <input #initialInput 
+                 type="text" 
+                 autofocus 
+                 placeholder="TARGET LOCATION" 
+                 (keyup.enter)="executeSearch(initialInput.value)" />
         </div>
+        
+        @if (errorMessage()) {
+          <div class="error-alert box-glitch">
+            <span class="error-icon">⚠️</span>
+            <p class="error-text blink">{{ errorMessage() }}</p>
+          </div>
+        }
       </div>
     }
 
-    <!-- PHASE 3: Trajectory Calculation Animation -->
     @case ('animating') {
       <div class="animating-overlay">
         <div class="target-reticle"></div>
@@ -44,14 +42,16 @@
       </div>
     }
 
-    <!-- PHASE 4: The Bento Box Dashboard HUD -->
     @case ('dashboard') {
       <div class="dashboard-wrapper">
         <div class="dashboard-content">
           
-          <!-- Floating Header Search Island -->
           <div class="search-island">
-            <input #cityInput type="text" [value]="currentCity()" placeholder="Where are you heading?" (keyup.enter)="executeSearch(cityInput.value)" />
+            <input #cityInput 
+                   type="text" 
+                   [value]="currentCity()" 
+                   placeholder="Where are you heading?" 
+                   (keyup.enter)="executeSearch(cityInput.value)" />
             <button (click)="executeSearch(cityInput.value)" [class.loading]="isSearching()">
               {{ isSearching() ? 'Scanning...' : 'Search' }}
             </button>
@@ -79,50 +79,155 @@
                 <div class="metric-row">
                   <span class="icon">💨</span>
                   <div class="data">
-                    <span class="label">Wind</span>
+                    <span class="label">Wind Speed</span>
                     <span class="value">{{ current.wind_speed_10m }} km/h</span>
                   </div>
                 </div>
               </div>
 
-              <!-- Smart Activity Advisor Block -->
+              <!-- Wind Trajectory Radar with Device Orientation -->
+              <div class="bento-card wind-card">
+                <h3>Wind Trajectory</h3>
+                <div class="radar-container">
+                  <div class="compass-circle">
+                    <div class="radar-sweep"></div>
+                    
+                    <div class="compass-dial" [style.transform]="'rotate(' + (-deviceHeading()) + 'deg)'">
+                      <span class="c-mark n">N</span>
+                      <span class="c-mark e">E</span>
+                      <span class="c-mark s">S</span>
+                      <span class="c-mark w">W</span>
+                      <div class="crosshair-x"></div>
+                      <div class="crosshair-y"></div>
+                      
+                      <div class="compass-arrow" 
+                           [style.transform]="'rotate(' + (current.wind_direction_10m || 0) + 'deg)'">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2"><path d="M12 2L4 22L12 18L20 22L12 2Z"/></svg>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="wind-stats">
+                    <div class="w-row">
+                      <span class="w-lbl">Speed</span>
+                      <span class="w-val">{{ current.wind_speed_10m || '--' }} km/h</span>
+                    </div>
+                    <div class="w-row">
+                      <span class="w-lbl">Gusts</span>
+                      <span class="w-val">{{ current.wind_gusts_10m || '--' }} km/h</span>
+                    </div>
+                    <div class="w-row">
+                      <span class="w-lbl">Angle</span>
+                      <span class="w-val">{{ current.wind_direction_10m || '--' }}°</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Atmospheric Index Block -->
+              <div class="bento-card quality-card">
+                <h3>Atmospheric Index</h3>
+                <div class="quality-grid">
+                  <div class="q-item">
+                    <span class="q-label">Peak UV</span>
+                    <span class="q-val" [class.optimal-glow]="atmosphericData()?.uv! < 5">
+                      {{ atmosphericData()?.uv }}
+                    </span>
+                  </div>
+                  <div class="q-item">
+                    <span class="q-label">Visibility</span>
+                    <span class="q-val">{{ atmosphericData()?.visibility }} km</span>
+                  </div>
+                  <div class="q-item">
+                    <span class="q-label">Pressure</span>
+                    <span class="q-val">{{ atmosphericData()?.pressure }} hPa</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Solar Ephemeris Block -->
+              <div class="bento-card ephemeris-card">
+                <h3>Solar Ephemeris</h3>
+                <div class="ephemeris-flex">
+                  <div class="sun-time">
+                    <span class="s-icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="coastal-svg">
+                        <path d="M12 2v6"></path><path d="M4.22 10.22l1.42 1.42"></path><path d="M19.78 10.22l-1.42 1.42"></path><path d="M2 20h20"></path><path d="M16 20a4 4 0 0 0-8 0"></path>
+                      </svg>
+                    </span>
+                    <div class="time-data">
+                      <span class="s-lbl">Dawn</span>
+                      <span class="s-val">{{ ephemerisData()?.sunrise || '05:42 AM' }}</span>
+                    </div>
+                  </div>
+                  <div class="sun-time">
+                    <span class="s-icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#00b4cc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="coastal-svg sunset-svg">
+                        <path d="M12 10v6"></path><path d="M4.22 10.22l1.42 1.42"></path><path d="M19.78 10.22l-1.42 1.42"></path><path d="M2 20h20"></path><path d="M16 20a4 4 0 0 0-8 0"></path>
+                      </svg>
+                    </span>
+                    <div class="time-data">
+                      <span class="s-lbl">Dusk</span>
+                      <span class="s-val">{{ ephemerisData()?.sunset || '06:55 PM' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Smart Advisor Block -->
               <div class="bento-card advisor-card">
                 <div class="card-header">
-                  <h3>Running Advisor</h3>
-                  <span class="subtitle">Tap a safe window to launch maps</span>
+                  <h3>Advisor</h3>
+                  <span class="subtitle">Select a clear window to deploy</span>
                 </div>
-                <div class="horizontal-scroll">
-                  @for (timeSlot of optimalWindows(); track timeSlot.timeBlock) {
-                    <button class="window-pill" 
-                            [class.optimal]="timeSlot.status === 'Optimal'" 
-                            [class.poor]="timeSlot.status === 'Poor'"
-                            (click)="launchRoute()">
-                      <span class="time">{{ timeSlot.timeBlock | date:'h a' }}</span>
-                      <span class="temp">{{ timeSlot.temperature }}°</span>
-                      <span class="status-icon">{{ timeSlot.status === 'Poor' ? '⚠️' : '✅' }}</span>
-                    </button>
+                
+                <div class="advisor-timeline">
+                  @for (timeSlot of optimalWindows(); track $index) {
+                    <div class="timeline-node" 
+                         [class.optimal]="timeSlot.status === 'Optimal'" 
+                         [class.poor]="timeSlot.status === 'Poor' || timeSlot.status === 'Hazardous'"
+                         [class.marginal]="timeSlot.status === 'Marginal' || timeSlot.status === 'Fair'"
+                         (click)="launchRoute()">
+                      
+                      <div class="node-indicator">
+                        <span class="pulse-dot"></span>
+                      </div>
+                      
+                      <div class="node-data">
+                        <span class="time">
+                          @if (optimalWindows().length > 6) {
+                            {{ timeSlot.timeBlock | date:'MMM d • h a' }}
+                          } @else {
+                            {{ timeSlot.timeBlock | date:'h a' }}
+                          }
+                        </span>
+                        <span class="temp">{{ timeSlot.temperature }}°</span>
+                        <span class="status-text">{{ timeSlot.status | uppercase }}</span>
+                      </div>
+                    </div>
                   }
                 </div>
               </div>
 
-              <!-- 7-Day Forecast Block -->
+              <!-- 15-Day Extended Outlook Block -->
               @if (dailyForecast(); as daily) {
                 <div class="bento-card forecast-card">
-                  <h3>7-Day Outlook</h3>
+                  <h3>15-Day Extended Outlook</h3>
                   <div class="forecast-list">
-                    @for (time of daily.time; track time; let i = $index) {
-                      @if (i >= 3) {
-                        <div class="daily-row">
-                          <span class="day">{{ time | date:'EEE' }}</span>
-                          <div class="range-wrapper">
-                            <span class="low">{{ daily.temperature_2m_min[i] | number:'1.0-0' }}°</span>
-                            <div class="range-track">
-                              <div class="range-fill"></div>
-                            </div>
-                            <span class="high">{{ daily.temperature_2m_max[i] | number:'1.0-0' }}°</span>
+                    @for (time of daily.time; track $index; let i = $index) {
+                      <div class="daily-row">
+                        <span class="day">{{ i === 0 ? 'Today' : (time | date:'EEE') }}</span>
+                        <span class="date-sub">{{ time | date:'MMM d' }}</span>
+                        
+                        <span class="low">{{ daily.temperature_2m_min[i] | number:'1.0-0' }}°</span>
+                        <div class="range-track">
+                          <div class="range-fill"
+                               [style.left.%]="((daily.temperature_2m_min[i] + 10) / 60) * 100"
+                               [style.width.%]="((daily.temperature_2m_max[i] - daily.temperature_2m_min[i]) / 60) * 100">
                           </div>
                         </div>
-                      }
+                        <span class="high">{{ daily.temperature_2m_max[i] | number:'1.0-0' }}°</span>
+                      </div>
                     }
                   </div>
                 </div>
@@ -133,6 +238,5 @@
         </div>
       </div>
     }
-
   }
 </div>
