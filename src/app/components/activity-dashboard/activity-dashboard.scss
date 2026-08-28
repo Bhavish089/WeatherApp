@@ -358,28 +358,14 @@
 
   .compass-circle {
     position: relative;
-    width: 70px;
-    height: 70px;
+    width: 85px;
+    height: 85px;
     border: 1px solid rgba(0, 229, 255, 0.3);
     border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     background: radial-gradient(circle, rgba(0, 229, 255, 0.05) 0%, rgba(0,0,0,0) 70%);
     box-shadow: inset 0 0 10px rgba(0, 229, 255, 0.1);
-
-    &::before, &::after { content: ''; position: absolute; background: rgba(0, 229, 255, 0.2); }
-    &::before { width: 100%; height: 1px; }
-    &::after { height: 100%; width: 1px; }
-
-    .compass-arrow {
-      width: 24px;
-      height: 24px;
-      z-index: 5;
-      transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1);
-      filter: drop-shadow(0 0 6px rgba(0, 229, 255, 0.8));
-    }
-    
+    overflow: hidden;
+  
     .radar-sweep {
       position: absolute;
       width: 50%;
@@ -390,7 +376,66 @@
       background: linear-gradient(90deg, rgba(0, 229, 255, 0.4), transparent);
       border-radius: 100% 0 0 0;
       animation: radar-spin 3s linear infinite;
-      z-index: 2;
+      z-index: 1;
+    }
+  
+    .compass-dial {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      z-index: 5;
+      
+      .c-mark {
+        position: absolute;
+        font-size: 0.6rem;
+        font-weight: 800;
+        color: #fff;
+        text-shadow: 0 0 6px #00e5ff;
+        
+        &.n { top: 3px; left: 50%; transform: translateX(-50%); }
+        &.s { bottom: 3px; left: 50%; transform: translateX(-50%); }
+        &.e { right: 5px; top: 50%; transform: translateY(-50%); }
+        &.w { left: 5px; top: 50%; transform: translateY(-50%); }
+      }
+  
+      .crosshair-x, .crosshair-y {
+        position: absolute;
+        background: rgba(0, 229, 255, 0.2);
+      }
+      .crosshair-x { top: 50%; left: 0; width: 100%; height: 1px; }
+      .crosshair-y { left: 50%; top: 0; height: 100%; width: 1px; }
+
+      .wind-pointer {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 4;
+
+        .wind-dot {
+          position: absolute;
+          top: 0; 
+          left: 50%;
+          transform: translateX(-50%);
+          width: 8px;
+          height: 8px;
+          background: #00e5ff;
+          border-radius: 50%;
+          box-shadow: 0 0 10px #00e5ff, 0 0 20px #00e5ff;
+        }
+      }
+  
+      .compass-arrow {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        margin-top: -12px;
+        margin-left: -12px;
+        width: 24px;
+        height: 24px;
+        transition: transform 0.2s ease-out;
+        filter: drop-shadow(0 0 8px rgba(0, 255, 157, 0.8));
+      }
     }
   }
 
@@ -399,11 +444,13 @@
     flex-direction: column;
     gap: 8px;
     width: 45%;
+    
     .w-row {
       display: flex;
       justify-content: space-between;
       border-bottom: 1px solid rgba(255, 255, 255, 0.05);
       padding-bottom: 4px;
+      
       .w-lbl { font-size: 0.7rem; opacity: 0.6; text-transform: uppercase; }
       .w-val { font-size: 0.85rem; font-weight: 600; color: #fff; }
     }
@@ -567,109 +614,3 @@
     }
   }
 }
-/* --- Maximum Contrast Search Bar --- */
-.search-island {
-  display: flex;
-  gap: 8px;
-  max-width: 500px;
-  margin: 0 auto 2.5rem;
-  background: rgba(2, 5, 10, 0.98); /* Near solid black to block out the earth */
-  -webkit-backdrop-filter: blur(24px);
-  backdrop-filter: blur(24px);
-  padding: 6px;
-  border-radius: 100px;
-  border: 1px solid #00e5ff; /* Solid neon cyan border for pop */
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.9), 0 0 25px rgba(0, 229, 255, 0.2);
-  
-  input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    padding: 10px 20px;
-    color: #ffffff;
-    font-weight: 600;
-    font-size: 1.1rem;
-    outline: none;
-    text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
-    &::placeholder { color: rgba(0, 229, 255, 0.5); }
-  }
-  
-  button {
-    background: #00e5ff;
-    color: #000;
-    border: none;
-    border-radius: 100px;
-    padding: 0 24px;
-    font-weight: 800;
-    cursor: pointer;
-    transition: all 0.2s;
-    &:hover { background: #fff; box-shadow: 0 0 15px #00e5ff; }
-  }
-}
-
-/* --- Upgraded Compass Dial --- */
-.compass-circle {
-  position: relative;
-  width: 85px;
-  height: 85px;
-  border: 1px solid rgba(0, 229, 255, 0.3);
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(0, 229, 255, 0.05) 0%, rgba(0,0,0,0) 70%);
-  box-shadow: inset 0 0 10px rgba(0, 229, 255, 0.1);
-  overflow: hidden;
-
-  .radar-sweep {
-    position: absolute;
-    width: 50%;
-    height: 50%;
-    top: 0;
-    left: 50%;
-    transform-origin: bottom left;
-    background: linear-gradient(90deg, rgba(0, 229, 255, 0.4), transparent);
-    border-radius: 100% 0 0 0;
-    animation: radar-spin 3s linear infinite;
-    z-index: 1;
-  }
-
-  .compass-dial {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    transition: transform 0.2s ease-out;
-    z-index: 5;
-    
-    .c-mark {
-      position: absolute;
-      font-size: 0.6rem;
-      font-weight: 800;
-      color: #fff;
-      text-shadow: 0 0 6px #00e5ff;
-      
-      &.n { top: 3px; left: 50%; transform: translateX(-50%); }
-      &.s { bottom: 3px; left: 50%; transform: translateX(-50%); }
-      &.e { right: 5px; top: 50%; transform: translateY(-50%); }
-      &.w { left: 5px; top: 50%; transform: translateY(-50%); }
-    }
-
-    .crosshair-x, .crosshair-y {
-      position: absolute;
-      background: rgba(0, 229, 255, 0.2);
-    }
-    .crosshair-x { top: 50%; left: 0; width: 100%; height: 1px; }
-    .crosshair-y { left: 50%; top: 0; height: 100%; width: 1px; }
-
-    .compass-arrow {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      margin-top: -12px;
-      margin-left: -12px;
-      width: 24px;
-      height: 24px;
-      transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1);
-      filter: drop-shadow(0 0 8px rgba(0, 229, 255, 0.9));
-    }
-  }
-}
-
-@keyframes radar-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

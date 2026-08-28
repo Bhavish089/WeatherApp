@@ -92,7 +92,7 @@
                   <div class="compass-circle">
                     <div class="radar-sweep"></div>
                     
-                    <div class="compass-dial" [style.transform]="'rotate(' + (-deviceHeading()) + 'deg)'">
+                    <div class="compass-dial">
                       <span class="c-mark n">N</span>
                       <span class="c-mark e">E</span>
                       <span class="c-mark s">S</span>
@@ -100,9 +100,15 @@
                       <div class="crosshair-x"></div>
                       <div class="crosshair-y"></div>
                       
+                      <div class="wind-pointer" [style.transform]="'rotate(' + (current.wind_direction_10m || 0) + 'deg)'">
+                        <div class="wind-dot"></div>
+                      </div>
+                      
                       <div class="compass-arrow" 
-                           [style.transform]="'rotate(' + (current.wind_direction_10m || 0) + 'deg)'">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2"><path d="M12 2L4 22L12 18L20 22L12 2Z"/></svg>
+                           [style.transform]="'rotate(' + deviceHeading() + 'deg)'">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#00ff9d" stroke-width="2">
+                          <path d="M12 2L4 22L12 18L20 22L12 2Z"/>
+                        </svg>
                       </div>
                     </div>
                   </div>
