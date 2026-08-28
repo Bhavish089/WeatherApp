@@ -29,7 +29,7 @@ export class ActivityDashboard {
   readonly currentCity = signal<string>('');
   readonly isSearching = signal(false);
   readonly errorMessage = signal<string>(''); 
-  readonly activeFilter = signal<string>('ALL'); // NEW: Telemetry Filter State
+  readonly activeFilter = signal<string>('ALL'); 
 
   readonly optimalWindows = signal<ActivityWindow[]>([]);
   readonly currentWeather = signal<RouteWeatherResponse['weather']['current'] | any>(null);
@@ -45,7 +45,6 @@ export class ActivityDashboard {
   private globeInstance: any;
   private currentZoomLevel = 0; 
 
-  // Categorized Global Nodes for Live Filtering
   private readonly globalMarkers = [
     { city: 'New York, USA', lat: 40.7128, lng: -74.0060, temp: '22°', icon: '☀️', condition: 'SUNNY' },
     { city: 'Los Angeles, USA', lat: 34.0522, lng: -118.2437, temp: '26°', icon: '☀️', condition: 'SUNNY' },
@@ -112,7 +111,6 @@ export class ActivityDashboard {
     return `translate3d(${this.mouseX() * -15}px, ${this.mouseY() * -15}px, 0) scale(1.05)`;
   }
 
-  // Live Filtering Logic
   private getFilteredMarkers() {
     if (this.activeFilter() === 'ALL') return this.globalMarkers;
     return this.globalMarkers.filter(m => m.condition === this.activeFilter());
@@ -155,9 +153,10 @@ export class ActivityDashboard {
       this.globeInstance = Globe()(this.globeVizEl.nativeElement)
         .width(width)
         .height(height)
-        .globeImageUrl('https://unpkg.com/three-globe@2.46.2/example/img/earth-blue-marble.jpg')
-        .bumpImageUrl('https://unpkg.com/three-globe@2.46.2/example/img/earth-topology.png')
-        .backgroundImageUrl('https://unpkg.com/three-globe@2.46.2/example/img/night-sky.png')
+        // CORS FIX: Bypassing unpkg redirect using JSDelivr CDN
+        .globeImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg')
+        .bumpImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png')
+        .backgroundImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/night-sky.png')
         .backgroundColor('rgba(0,0,0,0)')
         .showAtmosphere(true)
         .atmosphereColor('#00E5FF')
@@ -196,7 +195,8 @@ export class ActivityDashboard {
       textureLoader.setCrossOrigin('anonymous'); 
 
       const cloudMaterial = new THREE.MeshPhongMaterial({
-        map: textureLoader.load('https://unpkg.com/three-globe@2.46.2/example/img/earth-clouds10k.png'),
+        // CORS FIX: Bypassing unpkg redirect using JSDelivr CDN
+        map: textureLoader.load('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-clouds10k.png'),
         transparent: true,
         opacity: 0.65,
         blending: THREE.AdditiveBlending,
