@@ -55,6 +55,11 @@
             <button (click)="executeSearch(cityInput.value)" [class.loading]="isSearching()">
               {{ isSearching() ? 'Scanning...' : 'Search' }}
             </button>
+            <button class="icon-btn close-btn" (click)="closeDashboard()" title="Close Telemetry">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
+                <path d="M18 6L6 18M6 6l12 12"></path>
+              </svg>
+            </button>
           </div>
 
           @if (currentWeather(); as current) {
@@ -106,9 +111,7 @@
                       
                       <div class="compass-arrow" 
                            [style.transform]="'rotate(' + deviceHeading() + 'deg)'">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="#00ff9d" stroke-width="2">
-                          <path d="M12 2L4 22L12 18L20 22L12 2Z"/>
-                        </svg>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#00ff9d" stroke-width="2"><path d="M12 2L4 22L12 18L20 22L12 2Z"/></svg>
                       </div>
                     </div>
                   </div>

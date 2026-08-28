@@ -1,3 +1,5 @@
+// @ts-ignore
+import * as THREE from 'three';
 import { DatePipe, DecimalPipe, UpperCasePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy, Component, ElementRef,
@@ -40,6 +42,28 @@ export class ActivityDashboard {
   readonly deviceHeading = signal<number>(0);
 
   private globeInstance: any;
+  private currentZoomLevel = 0; 
+
+  // Expanded Nodes with Country Data
+  private readonly globalMarkers = [
+    { city: 'New York, USA', lat: 40.7128, lng: -74.0060, temp: '22°', icon: '☀️' },
+    { city: 'Los Angeles, USA', lat: 34.0522, lng: -118.2437, temp: '26°', icon: '☀️' },
+    { city: 'Mexico City, MX', lat: 19.4326, lng: -99.1332, temp: '20°', icon: '⛅' },
+    { city: 'Toronto, CAN', lat: 43.6532, lng: -79.3832, temp: '18°', icon: '🌧️' },
+    { city: 'São Paulo, BRA', lat: -23.5505, lng: -46.6333, temp: '25°', icon: '⛈️' },
+    { city: 'Bogotá, COL', lat: 4.7110, lng: -74.0721, temp: '14°', icon: '🌧️' },
+    { city: 'London, UK', lat: 51.5074, lng: -0.1278, temp: '15°', icon: '🌧️' },
+    { city: 'Paris, FRA', lat: 48.8566, lng: 2.3522, temp: '17°', icon: '⛅' },
+    { city: 'Berlin, DEU', lat: 52.5200, lng: 13.4050, temp: '16°', icon: '⛅' },
+    { city: 'Rome, ITA', lat: 41.9028, lng: 12.4964, temp: '24°', icon: '☀️' },
+    { city: 'Cape Town, ZAF', lat: -33.9249, lng: 18.4241, temp: '18°', icon: '☀️' },
+    { city: 'Cairo, EGY', lat: 30.0444, lng: 31.2357, temp: '33°', icon: '☀️' },
+    { city: 'Greater Noida, IND', lat: 28.4744, lng: 77.5040, temp: '31°', icon: '☀️' }, 
+    { city: 'Mumbai, IND', lat: 19.0760, lng: 72.8777, temp: '29°', icon: '⛈️' },
+    { city: 'Tokyo, JPN', lat: 35.6762, lng: 139.6503, temp: '28°', icon: '🌤️' },
+    { city: 'Dubai, UAE', lat: 25.2048, lng: 55.2708, temp: '38°', icon: '☀️' },
+    { city: 'Sydney, AUS', lat: -33.8688, lng: 151.2093, temp: '18°', icon: '⛅' }
+  ];
 
   constructor() {
     afterNextRender(() => {
@@ -77,22 +101,32 @@ export class ActivityDashboard {
   onDeviceOrientation(event: any) {
     if (typeof window !== 'undefined') {
       let heading = 0;
-      
-      if (event.webkitCompassHeading) {
-        heading = event.webkitCompassHeading;
-      } 
-      else if (event.absolute && event.alpha !== null) {
-        heading = 360 - event.alpha;
-      }
-      
-      if (Math.abs(this.deviceHeading() - heading) > 2) {
-        this.deviceHeading.set(heading);
-      }
+      if (event.webkitCompassHeading) { heading = event.webkitCompassHeading; } 
+      else if (event.absolute && event.alpha !== null) { heading = 360 - event.alpha; }
+      this.deviceHeading.set(Math.round(heading));
     }
   }
 
   get parallaxGlobe(): string {
     return `translate3d(${this.mouseX() * -15}px, ${this.mouseY() * -15}px, 0) scale(1.05)`;
+  }
+
+  private generateWindCurrents() {
+    const arcs = [];
+    for (let i = 0; i < 100; i++) {
+      const lat = (Math.random() - 0.5) * 140; 
+      const lng = (Math.random() - 0.5) * 360;
+      const isWesterly = Math.abs(lat) > 30; 
+      const length = (Math.random() * 40) + 15;
+      
+      arcs.push({
+        startLat: lat, startLng: lng,
+        endLat: lat + (Math.random() - 0.5) * 5, 
+        endLng: lng + (isWesterly ? length : -length),
+        color: isWesterly ? ['rgba(0, 229, 255, 0.0)', 'rgba(0, 229, 255, 0.6)'] : ['rgba(0, 255, 157, 0.0)', 'rgba(0, 255, 157, 0.6)']
+      });
+    }
+    return arcs;
   }
 
   private initGlobe(): void {
@@ -108,15 +142,75 @@ export class ActivityDashboard {
         .width(width)
         .height(height)
         .globeImageUrl('//unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+        .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
         .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
         .backgroundColor('rgba(0,0,0,0)')
         .showAtmosphere(true)
         .atmosphereColor('#00E5FF')
-        .atmosphereAltitude(0.18);
+        .atmosphereAltitude(0.25)
+        .arcsData(this.generateWindCurrents()) 
+        .arcStartLat((d: any) => d.startLat)
+        .arcStartLng((d: any) => d.startLng)
+        .arcEndLat((d: any) => d.endLat)
+        .arcEndLng((d: any) => d.endLng)
+        .arcColor((d: any) => d.color)
+        .arcDashLength(0.4)
+        .arcDashGap(0.2)
+        .arcDashAnimateTime(3000)
+        .arcAltitudeAutoScale(0.01)
+        .htmlTransitionDuration(200) 
+        .htmlElementsData([]) 
+        .htmlElement((d: any) => {
+          const el = document.createElement('div');
+          
+          if (this.currentZoomLevel === 2) {
+            el.className = 'globe-marker detailed scale-in';
+            el.innerHTML = `<div class="m-city">${d.city}</div><div class="m-data">${d.icon} <span>${d.temp}</span></div>`;
+          } else {
+            el.className = 'globe-marker basic scale-in';
+            el.innerHTML = `${d.icon} <span>${d.temp}</span>`;
+          }
+          
+          // LOCKED MAX ZOOM: 1.5 keeps the Earth texture incredibly crisp
+          el.onclick = () => this.globeInstance.pointOfView({ lat: d.lat, lng: d.lng, altitude: 1.5 }, 1500);
+          return el;
+        });
+
+      // --- VOLUMETRIC DRIFTING CLOUDS ---
+      const cloudGeometry = new THREE.SphereGeometry(this.globeInstance.getGlobeRadius() * 1.015, 75, 75);
+      const cloudMaterial = new THREE.MeshPhongMaterial({
+        map: new THREE.TextureLoader().load('//unpkg.com/three-globe/example/img/earth-clouds10k.png'),
+        transparent: true,
+        opacity: 0.65,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      });
+      const cloudSphere = new THREE.Mesh(cloudGeometry, cloudMaterial);
+      this.globeInstance.scene().add(cloudSphere);
+
+      (function rotateClouds() {
+        cloudSphere.rotation.y += 0.0003;
+        requestAnimationFrame(rotateClouds);
+      })();
 
       this.globeInstance.controls().autoRotate = true;
       this.globeInstance.controls().autoRotateSpeed = 0.4;
-      this.globeInstance.controls().enableZoom = false;
+      this.globeInstance.controls().enableZoom = true; 
+
+      this.globeInstance.onZoom((pov: { lat: number, lng: number, altitude: number }) => {
+        let newLevel = 0;
+        if (pov.altitude < 2.0) newLevel = 2; // City level triggers sooner
+        else if (pov.altitude < 4.0) newLevel = 1; 
+        else newLevel = 0; 
+
+        if (this.currentZoomLevel !== newLevel) {
+          this.currentZoomLevel = newLevel;
+          this.globeInstance.htmlElementsData(newLevel === 0 ? [] : this.globalMarkers);
+        }
+      });
+
+      this.globeInstance.pointOfView({ lat: 28.4744, lng: 77.5040, altitude: 6 }, 0);
     }).catch(err => console.error('Globe initialization failed:', err));
   }
 
@@ -132,7 +226,7 @@ export class ActivityDashboard {
     if (this.globeInstance) {
       try {
         const currentPov = this.globeInstance.pointOfView();
-        this.globeInstance.pointOfView({ ...currentPov, altitude: 2.5 }, 1000);
+        this.globeInstance.pointOfView({ ...currentPov, altitude: 3.0 }, 1000);
         this.globeInstance.controls().autoRotateSpeed = 15;
       } catch (e) {
         console.warn('Globe POV transition skipped', e);
@@ -163,7 +257,8 @@ export class ActivityDashboard {
         setTimeout(() => {
           if (this.globeInstance) {
             this.globeInstance.controls().autoRotateSpeed = 0.1; 
-            this.globeInstance.pointOfView({ lat, lng, altitude: 0.7 }, 2000); 
+            // Locked Target Zoom at 1.5 to maintain crisp country boundaries
+            this.globeInstance.pointOfView({ lat, lng, altitude: 1.5 }, 2000); 
           }
           setTimeout(() => {
             this.isSearching.set(false);
@@ -178,6 +273,17 @@ export class ActivityDashboard {
         this.errorMessage.set(`[ ERROR ]: TARGET '${destination.toUpperCase()}' NOT FOUND. PLEASE RECALIBRATE.`);
       },
     });
+  }
+
+  closeDashboard(): void {
+    this.currentPhase.set('search');
+    this.currentCity.set('');
+    
+    if (this.globeInstance) {
+      this.globeInstance.controls().autoRotateSpeed = 0.4;
+      const currentPov = this.globeInstance.pointOfView();
+      this.globeInstance.pointOfView({ lat: currentPov.lat, lng: currentPov.lng, altitude: 6 }, 1500);
+    }
   }
 
   launchRoute(): void {
