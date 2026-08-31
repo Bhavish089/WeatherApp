@@ -58,8 +58,7 @@ SUMMARY: [your 2 sentences here]`;
 
     const headers = new HttpHeaders({
       'Authorization': `Bearer ${this.apiKey}`,
-      'HTTP-Referer': 'http://localhost:4200',
-      'HTTPS-Referer': 'https://weather-app-coral-beta-28.vercel.app/',
+      'HTTPS-Referer': 'https://weather-app-coral-beta-28.vercel.app',
       'X-Title': 'Weather Dashboard',
       'Content-Type': 'application/json'
     });
